@@ -18,9 +18,6 @@ exports.getAssets = async (req, res) => {
         let rdata = [];
         for(let i = 0; i < list.length ; i ++) {
             let tradeHistory = await this.getTradeHistory(condition, list[i].symbol);
-
-            console.log(tradeHistory)
-
             let tempData = {
                 img: `https://s2.coinmarketcap.com/static/img/coins/32x32/${list[i].id}.png`,
                 name: list[i].name,
