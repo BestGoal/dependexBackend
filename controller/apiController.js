@@ -1,84 +1,47 @@
-const axios = require("axios")
-const rp = require('request-promise');
+const baseController = require("./baseController")
 
-exports.getAssets = async(req, res) => {
-    var serverURL = 'https://api.stellar.expert/explorer/public/asset/?limit=60&order=desc&sort=rating';
-    if (search && search != null) {
-        serverURL += '&search=';
+exports.getAssets = async (req, res) => {
+    let condition = req.body;
+    let sendData = {
+        start: condition.start,
+        limit: condition.limit,
+        sortBy: 'market_cap',
+        sortType: 'desc',
+        convert: condition.convert
     }
 
-    let assets = await axios.get(serverURL);
-    if (assets.status === 200) {
-        assets = assets.data._embedded.records;
-
-        for (let index = 0; index < assets.length; index++) {
-            //Set image key for asset
-            if (
-                assets[index].tomlInfo && 
-                Object.keys(assets[index].tomlInfo).length != 0 && 
-                (assets[index].tomlInfo.image || assets[index].tomlInfo.orgLogo)) {
-
-                if (assets[index].tomlInfo.image) {
-                    assets[index]['asset_image'] = assets[index].tomlInfo.image;
-                } else if(assets[index].tomlInfo.orgLogo) {
-                    assets[index]['asset_image'] = assets[index].tomlInfo.orgLogo;
-                }
-            } else {
-                assets[index]['asset_image_text'] = assets[index].asset.slice(0, 1)
+    let cryptoData = await baseController.sendJsonRequest('GET', 'https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing', sendData, {});
+    if(cryptoData && cryptoData.status.error_code == "0") {
+        let totalCount = cryptoData.data.totalCount;
+        let list = cryptoData.data.cryptoCurrencyList;
+        let rdata = [];
+        for(let i = 0; i < list.length ; i ++) {
+            // let tradeHistory = await this.getTradeHistory(condition, list[i].symbol);
+            let tempData = {
+                img: `https://s2.coinmarketcap.com/static/img/coins/32x32/${list[i].id}.png`,
+                name: list[i].name,
+                usdt: "0.00",
+                crypto: "0",
+                currency: list[i].symbol,
+                price: (list[i].quotes[0].price).toFixed(2),
+                time: "0.75 % 24hrs"
             }
-
-            //Set name key for asset
-            if (assets[index].tomlInfo && Object.keys(assets[index].tomlInfo).length != 0 && assets[index].tomlInfo.name) {
-                assets[index]['asset_name'] = assets[index].tomlInfo.name;
-            } else {
-                assets[index]['asset_name'] = assets[index].asset.slice(0, assets[index].asset.indexOf('-'));
-            }
-
-            //Set anchorName key for asset
-            assets[index]['asset_anchorName'] = assets[index].asset.slice(0, assets[index].asset.indexOf('-'));
-
-            //Set issuer key for asset
-            assets[index]['asset_issuer'] = assets[index].asset.slice(assets[index].asset.indexOf('-') + 1, assets[index].asset.lastIndexOf('-'))
+            rdata.push(tempData);
         }
-
-        return({status: true, data: assets})        
+        return res.json({ status: true, data: rdata, count: totalCount })
     } else {
-        return({status: false, message: "Something problem happened with server!"});
+        return res.json({ status: false })
     }
 }
 
-console.log(1)
-
-const requestOptions1 = {
-    method: 'GET',
-    uri: 'https://pro-api.coinmarketcap.com/v1/exchange/map',
-    qs: {
-        // 'id': '1',
-        // 'symbol': 'BTC',
-        // 'time_start': '021-05-07T10:14:22.401Z',
-        // 'time_end': '021-05-07T12:14:22.401Z',
-        // 'slug': 'bitcoin',    
-        'start': '1',
-        'limit': '100',
-        'sort': 'volume_24h',
-        // 'sort_dir': 'desc',
-        // 'matched_symbol': 'USD/BTC',
-        // 'interval': '1h',
-        // 'convert': 'EUR',
-        'crypto_id': '1',
-    },
-    headers: {
-        'X-CMC_PRO_API_KEY': "94a561c6-d365-4924-969a-ec9650d1eacc"
-    },
-    json: true,
-    gzip: true
-};
-
-rp(requestOptions1).then(response => {
-    console.log(response)
-    // console.log('API call response:', response);
-    // return res.send(response);
-}).catch((err) => {
-    console.log('API call error:', err.message);
-    // return res.send(err.message);
-});
+exports.getTradeHistory = async(condition, symbol) => {
+    let sendData = {
+        convert: condition.convert,
+        format: "chart_crypto_details",
+        symbol,
+        interval: "30m",
+        time_start: new Date().valueOf() - (60 * 60 * 24 * 1000),
+        time_end: new Date().valueOf()
+    }
+    // let data = await baseController.sendJsonRequest('GET', 'https://web-api.coinmarketcap.com/v1.1/cryptocurrency/quotes/historical', sendData, {});
+}
