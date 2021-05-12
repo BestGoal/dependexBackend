@@ -55,7 +55,11 @@ exports.getTradeHistory = async(condition, symbol) => {
         for (const i in data.data) {
             let element = data.data[i];
             for(const j in element) {
-                tradeData.push(element[j][0]);
+                let temp = {
+                    time: new Date(i).toLocaleString(),
+                    price: element[j][0]
+                }
+                tradeData.push(temp);
             }
         }
         return tradeData;
