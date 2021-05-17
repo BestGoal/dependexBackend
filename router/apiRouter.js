@@ -3,5 +3,7 @@ const router = express.Router();
 const apiController = require("../controller/apiController");
 
 router.post("/getAssets", apiController.getAssets);
+router.post("/getAssetsWithTrade", apiController.getAssetsWithTrade);
+router.post("/exchangeCard", apiController.exchangeCard);
 
 module.exports = router;
