@@ -11,7 +11,12 @@ exports.getAssets = async (req, res) => {
         convert: condition.convert
     }
 
+    console.time()
+
     let cryptoData = await baseController.sendJsonRequest('GET', 'https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing', sendData, {});
+
+    console.timeEnd()
+
     if (cryptoData && cryptoData.status.error_code == "0") {
         let totalCount = cryptoData.data.totalCount;
         let list = cryptoData.data.cryptoCurrencyList;
@@ -21,7 +26,7 @@ exports.getAssets = async (req, res) => {
                 img: `https://s2.coinmarketcap.com/static/img/coins/32x32/${list[i].id}.png`,
                 name: list[i].name,
                 currency: list[i].symbol,
-                price: (list[i].quotes[0].price).toFixed(2),
+                price: list[i].quotes[0].price,
             }
             rdata.push(tempData);
         }
@@ -40,23 +45,23 @@ exports.getAssetsWithTrade = async (req, res) => {
         sortType: 'desc',
         convert: condition.convert
     }
-
     let cryptoData = await baseController.sendJsonRequest('GET', 'https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing', sendData, {});
     if (cryptoData && cryptoData.status.error_code == "0") {
         let totalCount = cryptoData.data.totalCount;
         let list = cryptoData.data.cryptoCurrencyList;
         let rdata = [];
         for (let i = 0; i < list.length; i++) {
-            let tradeHistory = await this.getTradeHistory(condition, list[i].symbol);
             let tempData = {
                 img: `https://s2.coinmarketcap.com/static/img/coins/32x32/${list[i].id}.png`,
                 name: list[i].name,
                 usdt: "0.00",
                 crypto: "0",
                 currency: list[i].symbol,
-                price: (list[i].quotes[0].price).toFixed(2),
-                time: "0.75 % 24hrs",
-                tradeData: tradeHistory
+                price: list[i].quotes[0].price,
+                percent: Math.abs(list[i].quotes[0].percentChange24h).toFixed(2),
+                different: ((list[i].quotes[0].price / (100 - Math.abs(list[i].quotes[0].percentChange24h))) * Math.abs(list[i].quotes[0].percentChange24h)).toFixed(4),
+                type: list[i].quotes[0].percentChange24h > 0 ? true : false,
+                tradeData: []
             }
             rdata.push(tempData);
         }
@@ -64,6 +69,14 @@ exports.getAssetsWithTrade = async (req, res) => {
     } else {
         return res.json({ status: false })
     }
+}
+
+exports.getAssetsWithChart = async (req, res) => {
+    let { list, condition } = req.body;
+    for (let i = 0; i < list.length; i++) {
+        list[i].tradeData = await this.getTradeHistory(condition, list[i].currency);
+    }
+    return res.json({ status: true, data: list })
 }
 
 exports.getTradeHistory = async (condition, symbol) => {
@@ -117,7 +130,7 @@ exports.exchangeCard = async (req, res) => {
         'X-CMC_PRO_API_KEY': baseConfig.COIN_MARKET_KEY,
         'Accept': 'application/json'
     }
-    let data = await baseController.sendJsonRequest('GET', 'https://web-api.coinmarketcap.com/v1.1/cryptocurrency/quotes/historical', sendData, header); 
+    let data = await baseController.sendJsonRequest('GET', 'https://web-api.coinmarketcap.com/v1.1/cryptocurrency/quotes/historical', sendData, header)
 
     if (data && data.status.error_code == "0") {
         if(Object.keys(data.data).length) {
