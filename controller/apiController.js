@@ -40,10 +40,14 @@ exports.getAssetsWithTrade = async (req, res) => {
     let condition = req.body;
     let sendData = {
         start: condition.start,
-        limit: condition.limit,
         sortBy: 'market_cap',
         sortType: 'desc',
         convert: condition.convert
+    }
+    if(condition.search) {
+        sendData.limit = 6000
+    } else {
+        sendData.limit = condition.limit
     }
     let cryptoData = await baseController.sendJsonRequest('GET', 'https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing', sendData, {});
     if (cryptoData && cryptoData.status.error_code == "0") {
@@ -51,19 +55,36 @@ exports.getAssetsWithTrade = async (req, res) => {
         let list = cryptoData.data.cryptoCurrencyList;
         let rdata = [];
         for (let i = 0; i < list.length; i++) {
+            if(condition.search) {
+                let startsWithCondition = false, includesCondition = false, startsWithConditionc = false, includesConditionc = false
+                let uitem = (list[i]["name"]).toString();
+                startsWithCondition = uitem.toLowerCase().startsWith(condition.search.toLowerCase());
+                includesCondition = uitem.toLowerCase().includes(condition.search.toLowerCase());
+    
+                let citem = (list[i]["symbol"]).toString();
+                startsWithConditionc = citem.toLowerCase().startsWith(condition.search.toLowerCase());
+                includesConditionc = citem.toLowerCase().includes(condition.search.toLowerCase());
+    
+                if (!startsWithCondition && !startsWithConditionc && !includesCondition && !includesConditionc) {
+                    continue;
+                }
+            }
             let tempData = {
                 img: `https://s2.coinmarketcap.com/static/img/coins/32x32/${list[i].id}.png`,
                 name: list[i].name,
                 usdt: "0.00",
                 crypto: "0",
                 currency: list[i].symbol,
-                price: list[i].quotes[0].price,
+                price: list[i].quotes[0].price.toFixed(2),
                 percent: Math.abs(list[i].quotes[0].percentChange24h).toFixed(2),
-                different: ((list[i].quotes[0].price / (100 - Math.abs(list[i].quotes[0].percentChange24h))) * Math.abs(list[i].quotes[0].percentChange24h)).toFixed(4),
+                different: ((list[i].quotes[0].price / (100 - Math.abs(list[i].quotes[0].percentChange24h))) * Math.abs(list[i].quotes[0].percentChange24h)).toFixed(2),
                 type: list[i].quotes[0].percentChange24h > 0 ? true : false,
                 tradeData: []
             }
             rdata.push(tempData);
+            if(rdata.length == condition.limit) {
+                break;
+            }
         }
         return res.json({ status: true, data: rdata, count: totalCount })
     } else {
