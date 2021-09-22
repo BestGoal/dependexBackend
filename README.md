@@ -1,2 +1,3 @@
 # dependexBackend
  
+Coinmarketcap, Binanace API
